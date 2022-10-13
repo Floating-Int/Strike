@@ -11,10 +11,10 @@ class Shape: # SimpleShape
         self.height = height
         self.disabled = False
 
-    def is_intersecting(self, shape) -> bool: # NOTE: only works with SimpleShape
-        if ceil(self.owner.x) >= floor(shape.owner.x): # WORKS
+    def is_intersecting(self, shape) -> bool: # NOTE: only works with SimpleShape | support ReactiveShape
+        if ceil(self.owner.x) >= floor(shape.owner.x):
             if ceil(self.owner.x) + self.width < floor(shape.owner.x) + shape.width:
-                if ceil(self.owner.y) >= floor(shape.owner.y): # WORKS
+                if ceil(self.owner.y) >= floor(shape.owner.y):
                     if ceil(self.owner.y) + self.height < floor(shape.owner.y) + shape.height:
                         return True
         return False
@@ -46,7 +46,7 @@ class Collider:
     def get_colliders(self) -> list:
         colliders = []
         for collider in self._colliders:
-            if collider == self or collider.shape.disabled == True:
+            if collider.shape.disabled == True or collider == self:
                 continue
             if self.is_colliding_with(collider):
                 # collider._on_collision(self) # TODO: do from engine?

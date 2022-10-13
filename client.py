@@ -48,15 +48,3 @@ class Client:
     def send(self, request: str) -> None:
         encoded = request.encode(encoding="utf-8") + self._DELIMITER
         self._sock.send(encoded)
-
-
-if __name__ == "__main__":
-    import time
-    c = Client("localhost", 7070)
-    print("Started Client")
-    idx = 0
-    while True:
-        time.sleep(1)
-        c._update_socket()
-        print("---", idx)
-        idx += 1

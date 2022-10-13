@@ -1,7 +1,14 @@
 from typing import Any
+from node import Node
 
 
-class Informative:
+# class Hollow: # TODO: move class to a different file
+#     def __new__(cls: type, *args, **kwargs) -> type:
+#         instance = Node.__new__(cls)
+#         return instance # NOTE: still needs to manually send requests
+
+
+class Informative: # PROTOTYPE
     """ NOTE: Classes deriving from 'Informative' has to specify 'Informative' last """
     _REQUEST_ATTR_UPDATE = "ATTR:{name}:{value}"
 

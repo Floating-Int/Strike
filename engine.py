@@ -29,6 +29,7 @@ class Engine:
         self._splicer = Splicer(self.width, self.height)        
         self._clock = Clock(tps=tps)
         # start
+        self.is_running = True
         self._on_start()
         self.__main_loop()
     
@@ -46,8 +47,7 @@ class Engine:
         return
     
     def __main_loop(self) -> None:
-        # while not keyboard.is_pressed("q"): # main loop # DEV
-        while True: # main loop
+        while self.is_running: # main loop
             self._clock.tick()
 
             self._update_socket()

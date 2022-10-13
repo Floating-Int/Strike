@@ -35,12 +35,16 @@ class BaseServer:
             try:
                 conn.send(encoded)
             except (ConnectionAbortedError, ConnectionResetError) as exception:
+                self._on_connection_disconnected(conn)
                 self._sel.unregister(conn)
                 self.connections.remove(conn)
                 print(f"[Info] {exception.__class__.__name__}: A connection was lost")
 
-    def _on_connection_established(self, connection: socket.socket) -> None:
+    def _on_connection_connected(self, connection: socket.socket) -> None:
         return
+    
+    def _on_connection_disconnected(self, connection: socket.socket) -> None:
+        return # NOTE: connection may be closed
 
     def __main_loop(self) -> None:
         self._running = True
@@ -73,7 +77,7 @@ class BaseServer:
                 self._sel.register(connection, selectors.EVENT_READ)
                 self.connections.append(connection)
                 print(f"[Info] Client connected [{address}]")
-                self._on_connection_established(connection)
+                self._on_connection_connected(connection)
             except BlockingIOError:
                 continue
 
@@ -81,20 +85,30 @@ class BaseServer:
 class Server(BaseServer):
     SPAWN_RADIUS_MIN = 50  # minimum
     SPAWN_RADIUS_MAX = 100 # maximum
+    REQUEST_PING = "PING:0"
     REQUEST_CREATE = "CREATE:{cls}:x={x}:y={y}"
-    REQUEST_NEW_PLAYER = "PLAYER_CREATE:{cid}:{x}:{y}"
-    REQUEST_CONNECTION_ESTABLISHED = "CONNECTED:{cid}"
-    next_cid = 0
+    RESPONSE_CONNECTION_CONNECTED = "CONNECTED:{cid}" # TODO: ping all connections to update position to current
+    RESPONSE_CONNECTION_DISCONNECTED = "DISCONNECTED:{cid}"
+    RESPONSE_NEW_PLAYER = "PLAYER_CREATE:{cid}:{x}:{y}"
+    RESPONSE_PLAYER_POS = "PLAYER_POS:{cid}:{x}:{y}"
+    RESPONSE_MARKER_POS = "MARKER_POS:{cid}:{x}:{y}"
 
     def __init__(self, size: int, host: Union[str, int], port: Union[str, int]) -> None:
+        self.next_cid = 0
         BaseServer.__init__(self, size, host, port)
     
-    def _on_connection_established(self, connection: socket.socket) -> None:
-        # FIXME: CID is not stable, or is it?
-        response = self.REQUEST_CONNECTION_ESTABLISHED.format(cid=self.next_cid).encode("utf-8") + self._DELIMITER
+    def _on_connection_connected(self, connection: socket.socket) -> None:
+        response = self.RESPONSE_CONNECTION_CONNECTED.format(cid=self.next_cid).encode("utf-8") + self._DELIMITER
         self.next_cid += 1
         connection.send(response) # NOTE: slight chance of crashing. handle it?
         print(f"[Info] Sending CID ({self.next_cid -1}) to new connection")
+        # ping other connections
+        print(f"[Routine] {len(self.connections)} connections pinged")
+        self.broadcast(self.REQUEST_PING, exclude=(connection, ))
+        print(f"[Routine] {len(self.connections)} connections remaining")
+
+    def _on_connection_disconnected(self, connection: socket.socket) -> None:
+        ... # TODO: ping all connections to see who are still connected
 
     def _on_request(self, connection: socket.socket, request: str, args: tuple) -> None:
         print("[Request]", request, args)
@@ -112,9 +126,26 @@ class Server(BaseServer):
             # disconnect temp connection
             self.connections.remove(connection) # TESTME
 
-        elif request == "ATTR":
-            return # DEV
+        elif request == "DISCONNECT":
+            cid = args[0]
+            response = self.RESPONSE_CONNECTION_DISCONNECTED.format(cid=cid)
+            self.broadcast(response, exclude=(connection, ))
+
+        elif request == "CREATE":
+            cls, x, y = args
+            response = self.REQUEST_CREATE.format(cls=cls, x=x, y=y)
+            self.broadcast(response, exclude=(connection, ))
+
+        elif request == "PLAYER_POS":
+            cid, x, y = args
+            response = self.RESPONSE_PLAYER_POS.format(cid=cid, x=x, y=y)
+            self.broadcast(response, exclude=(connection, ))
         
+        elif request == "MARKER_POS":
+            cid, x, y = args
+            response = self.RESPONSE_MARKER_POS.format(cid=cid, x=x, y=y)
+            self.broadcast(response, exclude=(connection, ))
+
         elif request == "PLAYER_JOINED":
             x = random.randint(self.SPAWN_RADIUS_MIN, self.SPAWN_RADIUS_MAX)
             y = random.randint(self.SPAWN_RADIUS_MIN, self.SPAWN_RADIUS_MAX)
@@ -123,9 +154,9 @@ class Server(BaseServer):
             if random.randint(0, 1):
                 y = -y
             cid = self.connections.index(connection)
-            response = self.REQUEST_NEW_PLAYER.format(cid=cid, x=x, y=y)
+            response = self.RESPONSE_NEW_PLAYER.format(cid=cid, x=x, y=y)
             self.broadcast(response)
-            print(f"[Response] (CID: {cid}) Making new Base at {y}x, {x}y")
+            print(f"[Response] (CID: {cid}) Making new Base at {x}x, {-y}y") # -y because of visual
         
         elif request == "SHELL_LAUNCHED":
             type_name, x, y, tx, ty = args

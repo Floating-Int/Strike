@@ -3,6 +3,7 @@ import random
 from node import Node
 from interaction import Interactive
 from collision import Collider, Area
+from container import Container
 from animation import AnimationPlayer, Animation
 from structure import Structure
 # from pygame import mixer
@@ -125,7 +126,7 @@ class Shell(Node):
                 self._explode()
 
 
-class Mortar(Area, Interactive, Structure, Node):
+class Mortar(Area, Interactive, Container, Structure, Node):
     COST = 10
     _SHELL_TYPE = Shell
     _SHELL_OFFSET = [2, 1]
@@ -154,13 +155,6 @@ class Mortar(Area, Interactive, Structure, Node):
     def set_target(self, target: list) -> None:
         self._target = target
         self._forced_miss_radius = self._MIN_FORCED_MISS_RADIUS
-    
-    def is_available_for(self, interactor: Node) -> None:
-        # return True # DEV
-        if interactor.x >= self.x and interactor.x < self.x + len(self.content[0]):
-            if interactor.y >= self.y and interactor.y < self.y + len(self.content):
-                return True
-        return False
     
     def _on_interaction(self, interactor: Node, key: str = None) -> None:
         if key == "f":
