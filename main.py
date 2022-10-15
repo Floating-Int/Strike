@@ -34,7 +34,7 @@ class App(Client, Engine):
         self.settings._on_exit = self.disconnect
         self.player = Player(self, x=3, y=3, z=1)
         self.player.hotbar.add_item(Wrench(self.player))
-        self.player.hotbar.add_item(RemoteTrigger(self.player))
+        # self.player.hotbar.add_item(RemoteTrigger(self.player))
         # self.player.hotbar.add_item(Firearm(self.player))
         self.settings.owner = self.player
         self.resource_system = ResourceSystem(self.player, x=0, y=self.height-1)

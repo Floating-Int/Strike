@@ -9,7 +9,6 @@ class Node:
 
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
-        cls._nodes.append(instance)
         # generate new unique ID
         instance._uid = cls._uid # NOTE: DO NOT CHANGE AT RUNTIME!
         cls._uid += 1
@@ -18,10 +17,17 @@ class Node:
         instance.name = cls.__name__
         instance.x = 0
         instance.y = 0
-        instance.z = 0
+        instance.z = 0 # TODO: do a sort when z index changed
         instance.visible = True
         instance.content = [] # 2D array: [["l", "1"], ["l", "2"]]
+        # add node ref to keep it alive and sort nodes by z index and UID
+        cls._nodes.append(instance)
+        Node._nodes.sort(key=Node.__sort_fn)
         return instance
+    
+    @staticmethod
+    def __sort_fn(node: object) -> int:
+        return (node.z, node._uid)
 
     def __init__(self, owner=None, x: int = 0, y: int = 0, z: int = 0) -> None:
         """Init base class node

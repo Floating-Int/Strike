@@ -3,19 +3,16 @@
 class Interactive:
     _interactives = []
 
+    @staticmethod
+    def __sort_fn(interactive) -> None:
+        return (interactive.precedence, interactive._uid)
+
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls, *args, **kwargs)
         cls._interactives.append(instance)
         instance.precedence = 10
+        Interactive._interactives.sort(key=Interactive.__sort_fn)
         return instance
-    
-    @staticmethod
-    def __sort_fn(interactive) -> None:
-        return (interactive.precedence, interactive._uid)
-    
-    @classmethod
-    def _sorted_interactives(cls) -> list:
-        return sorted(cls._interactives, key=cls.__sort_fn, reverse=True)
     
     def is_available_for(self, interactor) -> bool:
         if interactor.x >= self.x and interactor.x < self.x + len(self.content[0]):
@@ -34,7 +31,7 @@ class Interactive:
 class Interactor:
 
     def interact(self, key: str = None, single: bool = True) -> None:
-        for interactive in Interactive._sorted_interactives():
+        for interactive in Interactive._interactives:
             if interactive == self:
                 continue
             if interactive.is_available_for(self):
@@ -42,5 +39,16 @@ class Interactor:
                 if single:
                     break
     
+    def get_available_interactive(self) -> Interactive:
+        """Returns the first available <Interactive> based on <Interactive>.is_available_for(<Self@Interactor>)
+
+        Returns:
+            Interactive | None: available interactive
+        """
+        for interactive in Interactive._interactives:
+            if interactive.is_available_for(self):
+                return interactive
+        return None
+
     def interact_with(self, interactive, key=None) -> None:
         interactive._on_interaction(self, key=key)

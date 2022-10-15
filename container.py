@@ -1,6 +1,7 @@
 from node import Node, Control
 from item import Item
 from interaction import Interactive
+from event import InputHandler
 from ui import DecayLabel
 
 
@@ -21,10 +22,11 @@ class Container:
         self.inventory.append(item) # FIXME
 
 
-class Hotbar(Interactive, Container, DecayLabel):
+class Hotbar(Interactive, InputHandler, Container, DecayLabel):
     def __init__(self, owner=None, x: int = 0, y: int = 0, z: int = Control.TOP_LEVEL, text: str = None, decay: float = 1) -> None:
         super().__init__(owner, x, y, z, text, decay)
-        self.precedence = 3
+        self.add_action("cycle_next", key="tab")
+        self.precedence = 30
     
     def add_item(self, item: Item, count: int = 1) -> None:
         super().add_item(item, count)

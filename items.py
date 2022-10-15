@@ -71,13 +71,11 @@ class RemoteTrigger(Interactor, Item, Node):
 
     def _on_interaction(self, interactor: Node, key: str = None) -> None:
         if key == "f": # link with mortar
-            # TODO: get Mortar instance with collision checks on Area
-            # TODO: or check based on interactives
-            for interactive in Interactive._sorted_interactives(): # TODO: make interface
-                if interactive.is_available_for(interactor):
-                    if interactive.name in ["Mortar", "Flak"]: # NOTE: only stores Mortar and Flak
-                        # print("LINK:", interactive.name)
-                        self.link_with(interactive)
+            interactive = self.get_available_interactive()
+            if interactive:
+                if interactive.name in ["Mortar", "Flak"]:
+                    self.link_with(interactive)
+                    # print("LINK:", interactive.name)
         elif key == "e_released":
             self._target = interactor.marker.position
             # print("TARGET:", interactor.marker.position)

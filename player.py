@@ -1,30 +1,34 @@
 from node import Node
 from interaction import Interactor
 from collision import Collider
+from event import InputHandler, InputEvent
 from container import Hotbar
 from camera import Camera
 from ui import HealthBar, Compass, NodeCounter
-import keyboard
 
 
-class Marker(Node):
+class Marker(InputHandler, Node):
     _SPEED = 16
 
     def __init__(self, owner=None, x: int = 0, y: int = 0, z: int = 0) -> None:
         super().__init__(owner, x, y, z)
+        self.add_action("move_right", key="d")
+        self.add_action("move_left", key="a")
+        self.add_action("move_up", key="w")
+        self.add_action("move_down", key="s")
         self.content = [["O"]]
         self.is_moving = False
 
     def _update(self, delta: float) -> None:
         if self.is_moving:
             current = (self.x, self.y)
-            if keyboard.is_pressed("d"):
+            if self.is_action_pressed("move_right"):
                 self.x += self._SPEED * delta
-            if keyboard.is_pressed("a"):
+            if self.is_action_pressed("move_left"):
                 self.x -= self._SPEED * delta
-            if keyboard.is_pressed("w"):
+            if self.is_action_pressed("move_up"):
                 self.y -= self._SPEED * delta
-            if keyboard.is_pressed("s"):
+            if self.is_action_pressed("move_down"):
                 self.y += self._SPEED * delta
             if (self.x, self.y) != current: # moved
                 self.root.send(f"MARKER_POS:{self.root.cid}:{self.x}:{self.y}")
@@ -36,18 +40,31 @@ class HollowMarker(Node):
         self.content = [["O"]]
 
 
-class Player(Interactor, Collider, Node):
+class Player(Interactor, Collider, InputHandler, Node):
     _SPEED = 16 # TODO: fix issue when speed is decimal using floor and ceil
 
     def __init__(self, owner: Node = None, x: int = 0, y: int = 0, z: int = 0) -> None:
         super().__init__(owner, x, y, z)
+        self.add_action("move_right", key="d")
+        self.add_action("move_left", key="a")
+        self.add_action("move_up", key="w")
+        self.add_action("move_down", key="s")
+        self.add_action("activate", key="space")
+        self.add_action("interact", key="f")
+        self.add_action("move_marker", key="e")
+        self.add_action("build", key="q")
+        self.add_action("rotate", key="r")
+        self.add_action("slot_1", key="1")
+        self.add_action("slot_2", key="2")
+        self.add_action("slot_3", key="3")
+        self.add_action("cycle_next", key="tab")
         self.content = [["@"]]
         self.target = None # 2D point
         self.direction = [0, 0]
         self.hotbar = Hotbar(self, x=0, y=2)
         self.marker = Marker(self, z=2)
         self.marker.visible = False # TEST
-        self._key_r_pressed = False
+        # self._key_r_pressed = False
         self._is_moving = True
         self._max_health = 3
         self._health = self._max_health
@@ -74,55 +91,52 @@ class Player(Interactor, Collider, Node):
         self.health = self._max_health
         self.root.send(f"PLAYER_POS:{self.root.cid}:{self.x}:{self.y}")
 
+    def _input(self, event: InputEvent) -> None:
+        if event.action == "rotate" and event.pressed:
+            self.interact("r")
+
     def _update(self, delta: float) -> None:
         if self.root.settings.visible:
             return
         if not self._is_moving:
-            if not keyboard.is_pressed("e"):
+            if self.is_action_released("move_marker"):
                 self._is_moving = True
                 self.marker.is_moving = False
                 self.target = self.marker.position
                 self.interact("e_released")
             return
         
-        if keyboard.is_pressed("1"):
+        if self.is_action_pressed("slot_1"):
             self.interact("1")
         
-        elif keyboard.is_pressed("2"):
+        elif self.is_action_pressed("slot_2"):
             self.interact("2")
         
-        elif keyboard.is_pressed("3"): # DEV
+        elif self.is_action_pressed("slot_3"):
             self.interact("3")
         
-        if keyboard.is_pressed("tab"):
+        if self.is_action_pressed("cycle_next"):
             self.interact("tab")
 
-        if keyboard.is_pressed("f"): # interaction key
+        if self.is_action_pressed("interact"): # interaction key
             self.interact("f", single=False)
 
-        elif keyboard.is_pressed("e"):
+        elif self.is_action_pressed("move_marker"):
             self._is_moving = False
             self.marker.is_moving = True
             self.marker.visible = True
             self.marker.position = self.position
 
-        elif keyboard.is_pressed("q"):
+        elif self.is_action_pressed("build"):
             self.interact("q")
         
-        elif keyboard.is_pressed("space"): # activation key
+        elif self.is_action_pressed("activate"): # activation key
             self.interact("space")
         
-        elif keyboard.is_pressed("r"):
-            if not self._key_r_pressed:
-                self._key_r_pressed = True
-                self.interact("r")
-        elif not keyboard.is_pressed("r"):
-            self._key_r_pressed = False
-
         current = self.position
-        if keyboard.is_pressed("d"):
+        if self.is_action_pressed("move_right"):
             self.x += self._SPEED * delta
-        if keyboard.is_pressed("a"):
+        if self.is_action_pressed("move_left"):
             self.x -= self._SPEED * delta
 
         if self.x != current[0]: # moved on x axix
@@ -133,9 +147,9 @@ class Player(Interactor, Collider, Node):
         else:
             self.direction[0] = 0
 
-        if keyboard.is_pressed("w"):
+        if self.is_action_pressed("move_up"):
             self.y -= self._SPEED * delta
-        if keyboard.is_pressed("s"):
+        if self.is_action_pressed("move_down"):
             self.y += self._SPEED * delta
         
         if self.y != current[1]: # moved on y axix

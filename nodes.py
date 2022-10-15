@@ -1,7 +1,8 @@
 from node import Node, Control
+from singleton import Singleton
 # components
 from interaction import Interactive, Interactor
-from collision import Collider
+from collision import Collider, Area, Shape, ReactiveShape
 # util
 from animation import Frame, Animation, AnimationPlayer
 from camera import Camera

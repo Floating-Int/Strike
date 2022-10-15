@@ -8,14 +8,10 @@ class Splicer:
     def __init__(self, width: int, height: int) -> None:
         self.width = width
         self.height = height
-    
-    @staticmethod
-    def _sort_fn(node: Node) -> int:
-        return (node.z, node._uid)
 
     def concatenate(self, node_array: list, camera: Node) -> list:
         array = [[self.NONE] * self.width for _y in range(self.height)]
-        for node in sorted(node_array, key=self._sort_fn):
+        for node in node_array:
             if not node.visible:
                 continue
             content = node._render() # returns 2D array
@@ -47,7 +43,7 @@ class Splicer:
 
     def concatenate(self, node_array: list, camera: Node) -> list:
         array = [[self.NONE] * self.width for _y in range(self.height)]
-        for node in sorted(node_array, key=self._sort_fn):
+        for node in node_array:
             if not node.visible or not node.content:
                 continue
             x = int(node.x - camera.x) # local x

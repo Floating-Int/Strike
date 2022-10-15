@@ -1,4 +1,4 @@
-import keyboard
+from event import InputMap
 from concatenate import Splicer
 from clock import Clock
 from node import Node
@@ -26,7 +26,7 @@ class Engine:
         self.tps = tps
         self.width = int(width)
         self.height = int(height)
-        self._splicer = Splicer(self.width, self.height)        
+        self._splicer = Splicer(self.width, self.height) # TODO: change to camera ref        
         self._clock = Clock(tps=tps)
         # start
         self.is_running = True
@@ -50,11 +50,12 @@ class Engine:
         while self.is_running: # main loop
             self._clock.tick()
 
-            self._update_socket()
+            self._update_socket() # TODO: add from Client when subclassing
 
-            # NOTE: update 'self' or 'Node._nodes' first?
+            InputMap._update() # NOTE: takes no delta (framebased)
+
             # delta = self._clock.get_delta()
-            delta = self._clock._tick_rate
+            delta = self._clock._tick_rate # FIXME: fix delta
             self._update(delta)
             for node in Node._nodes:
                 node._update(delta)
