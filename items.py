@@ -1,8 +1,9 @@
-from nodes import *
+import math
+from node import Node
 from interaction import Interactive, Interactor
 from event import InputHandler, InputEvent
 from item import Item
-import math
+from nodes import *
 
 
 class Wrench(InputHandler, Item):
@@ -52,6 +53,8 @@ class Wrench(InputHandler, Item):
             self._rotation_index_ui.show()
     
     def _update(self, _delta: float) -> None:
+        if not self.active:
+            return
         if self.is_action_pressed("build"):
             Struct = globals()[self.structures[self._index]]
             if self.root.resource_system.resources >= Struct.COST:
@@ -68,41 +71,64 @@ class Wrench(InputHandler, Item):
                 self.root.send(self._REQUEST_CREATE.format(structure=Struct.__name__, x=x, y=y))
 
 
-class RemoteTrigger(Interactor, Interactive, Item, Node):
+class RemoteTrigger(InputHandler, Interactor, Interactive, Item, Node):
     TEXTURE = "±"
     _WHITELISTED = ["Mortar", "Flak"]
 
     def __init__(self, owner: Node, offset: list = [0, 0]) -> None:
         super().__init__(owner, offset)
+        self.add_action("unlink", key="x")
         self._links = [] # node refs
         self._target = None
     
     def link_with(self, interactive: Interactive) -> None:
         self._links.append(interactive)
+        interactive.target_decay_label.text = "~Linked"
+        interactive.target_decay_label.x = interactive.x -1
+        interactive.target_decay_label.show()
 
-    def clear_links(self) -> None:
-        self._links = []
-    
+    def _input(self, event: InputEvent) -> None:
+        if not self.active:
+            return
+        if event.pressed:
+            if event.action == "unlink":
+                interactive = self.get_available_interactive()
+                if interactive:
+                    if interactive.name in self._WHITELISTED:
+                        if interactive in self._links:
+                            interactive.set_target(None)
+                            interactive.target_decay_label.text = "~Unlinked"
+                            interactive.target_decay_label.x = interactive.x -2
+                            interactive.target_decay_label.show()
+                            self._links.remove(interactive)
+                    return
+                for linked in self._links:
+                    linked.set_target(None)
+                    linked.target_decay_label.text = "~Unlinked"
+                    linked.target_decay_label.x = linked.x -2
+                    linked.target_decay_label.show()
+                self._links = [] # clear links if not single target is found
+
     def is_available_for(self, interactor: Node) -> bool:
         return self.active and interactor.name == "Player"
 
     def _on_interaction(self, interactor: Node, key: str = None) -> None:
-        if key == "config": # link with mortar
+        if key == "progress": # link with mortar
+            # TODO: make progressbar, increase it each event press. on full capacity, set target
             interactive = self.get_available_interactive()
             if interactive:
                 if interactive.name in self._WHITELISTED:
                     self.link_with(interactive)
                     # print("LINK:", interactive.name)
-        elif key == "stop_marker": # TODO: rename
-            self._target = interactor.marker.position
-            # print("TARGET:", interactor.marker.position)
-        elif key == "activate":
+        elif key == "activate": # link
+            self._target = self.owner.marker.position
+            # print("TARGET:", self._target)
             for linked in self._links:
                 linked.set_target(self._target)
                 self.interact_with(linked, key=key)
 
     def free(self) -> None:
-        self._linked = None
+        self._links = None
         super().free()
 
 

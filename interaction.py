@@ -1,7 +1,7 @@
 from node import Node
 
 
-class Interactive:
+class Interactive: # Component
     precedence: int = 10
     _interactives = []
 
@@ -29,7 +29,7 @@ class Interactive:
         super().free()
 
 
-class Interactor:
+class Interactor: # Component
 
     def interact(self, key: str = None, single: bool = True) -> None:
         for interactive in Interactive._interactives:

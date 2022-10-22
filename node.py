@@ -107,10 +107,3 @@ class Control:
             # self.x = self.owner.x + self._initial_x - sum(divmod(self.root.width, 2))
             # self.y = self.owner.y + self._initial_y - sum(divmod(self.root.height, 2))
         return _update
-
-
-# class HollowNode(Node):
-#     _REQUEST_ATTR_CHANGED = "ATTR:{}{}$" # name, value
-#     def __setattr__(self, name: str, value: Any) -> None:
-#         self.__dict__[name] = value
-#         self.root.send(self._REQUEST_ATTR_CHANGED)

@@ -33,13 +33,9 @@ class App(Client, Engine):
         self.settings = Settings(x=2, y=2) # TODO: make owner follow ref of camera
         self.player = Player(self, x=3, y=3, z=1)
         self.player.hotbar.add_item(Wrench(self.player))
-        # self.player.hotbar.add_item(RemoteTrigger(self.player))
+        self.player.hotbar.add_item(RemoteTrigger(self.player))
         # self.player.hotbar.add_item(Firearm(self.player))
-        # self.settings.owner = self.player
         self.resource_system = ResourceSystem(self.player, x=0, y=self.height-1)
-        # self.player.wrench = Wrench(self.player)
-        # self.player.remote_trigger = RemoteTrigger(self.player)
-        # self.player.firearm = Firearm(self.player)
         self.moartar_a = Mortar(self, x=10, y=2)
         self.moartar_b = Mortar(self, x=10, y=6)
         self.flak_a = Flak(self, x=-10, y=2)
@@ -93,6 +89,7 @@ class App(Client, Engine):
         return args, kwargs
 
     def on_player_spawn(self, cid: int, x: int, y: int):
+        return # DEV
         # TODO: send back player position
         # print(f"NEW PLAYER ({cid}) at {x}x, {y}y")
         if self.cid == cid:
@@ -163,6 +160,6 @@ if __name__ == "__main__":
     except Exception as exception:
         # NOTE: BugReport gathers the last exception
         report = BugReport((HOST, PORT))
-        # report.submit() # DEV
+        report.submit() # DEV
         report.print_report()
-        # raise type(exception) from exception
+        raise type(exception) from exception

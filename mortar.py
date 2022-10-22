@@ -6,6 +6,7 @@ from collision import Collider, Area
 from container import Container
 from animation import AnimationPlayer, Animation
 from structure import Structure
+from static_ui import StaticDecayLabel
 # from pygame import mixer
 # mixer.init()
 
@@ -21,8 +22,7 @@ class Crater(Collider, Node):
             Explode=Animation("./animations/crater")
         )
         self._animation.animation = "Explode"
-        self._animation.advance() # DEV: not needed
-        # self.x -= sum(divmod(len(max(self.content, key=len)), 2))
+        self._animation.advance()
         self.x -= len(max(self.content, key=len)) // 2 -1
         self.y -= len(self.content) // 2
         self._stage = 0
@@ -70,7 +70,11 @@ class Crater(Collider, Node):
 class Shell(Node):
     _CRATER_TYPE = Crater
     _FALLING_SPEED_FACTOR = 2.5
+    _TRAVEL_FRACTION = 1.0 / 2 # 
+    _MIN_FALL_HEIGHT = 10
+    _MAX_FALL_HEIGHT = 30
     _MIN_LENGTH = 5
+    _SNAP = 0.5
     # _sound = mixer.Sound("./sounds/mortar_impact.wav")
     
     def __init__(self, owner=None, x: int = 0, y: int = 0, z: int = 0, velocity: int = 10, target: tuple = (0, 0)) -> None:
@@ -82,9 +86,10 @@ class Shell(Node):
         tx, ty = target
         rx = tx - x
         ry = ty - y
-        self._total_length = max(self._MIN_LENGTH, math.sqrt(rx * rx + ry * ry)) # total
+        self._total_length = max(self._MIN_LENGTH, math.sqrt(rx * rx + ry * ry) * self._TRAVEL_FRACTION) # total
+        self._is_falling = False
         self._elapsed_time = 0
-        self._has_notified = False # notified server
+        # self._has_notified = False # notified server
         # self._playing_sound = False
     
     @classmethod
@@ -102,19 +107,22 @@ class Shell(Node):
         if (self._elapsed_time * self._velocity * 0.50) < (self._total_length):
             self.y -= self._velocity * delta
         elif (self._elapsed_time * self._velocity * 0.25) < (self._total_length):
+            if not self._is_falling:
+                self._is_falling = True
+                self.content = [["v"]]
+                self.x = self._target[0]
+                self.y = self._target[1] - random.randint(self._MIN_FALL_HEIGHT, self._MAX_FALL_HEIGHT)
             # if not self._playing_sound:
             #     self._playing_sound = True
             #     self._sound.play()
             # networking
             # move shell
-            self.content = [["v"]]
-            self.x = self._target[0]
-            if not self._has_notified: # so clients can hear sound
+            # if not self._has_notified: # so clients can hear sound
                 # tx, ty = self._target
                 # self.root.send(self._REQUEST_FALLING.format(x=self.x, y=self.y, tx=tx, ty=ty))
-                self._has_notified = True
+                # self._has_notified = True
             self.y += self._velocity * delta * self._FALLING_SPEED_FACTOR # increased impact speed
-            if self._target[1] - self.y < 0.5: # snap
+            if self._target[1] - self.y < self._SNAP:
                 self.position = self._target
                 self._explode()
     
@@ -127,6 +135,7 @@ class Shell(Node):
 
 class Mortar(Area, Interactive, Container, Structure, Node):
     COST = 10
+    _WHITELISTED = ["Player", "RemoteTrigger"]
     _SHELL_TYPE = Shell
     _SHELL_OFFSET = [2, 1]
     _SALVO_COUNT = 1
@@ -137,14 +146,16 @@ class Mortar(Area, Interactive, Container, Structure, Node):
 
     def __init__(self, owner=None, x: int = 0, y: int = 0, z: int = 0) -> None:
         super().__init__(owner, x, y, z)
-        self.animation = AnimationPlayer(
+        self._animation = AnimationPlayer(
             self,
-            Idle=Animation("./animations/mortar/idle")
+            Idle=Animation("./animations/mortar/idle"), # TODO: change file name to unloaded/inactive
+            LoadShell=Animation("./animations/mortar/loaded")
         )
-        self.animation.play("Idle")
+        self._animation.play("Idle")
         self.shape.width = len(max(self.content, key=len))
         self.shape.height = len(self.content)
         self.shape.disabled = False
+        self.target_decay_label = StaticDecayLabel(self, x=0, y=-1, text="x / y", decay=1.25)
         self._target = None
         self._forced_miss_radius = self._MIN_FORCED_MISS_RADIUS # lower number is more accurate
         self._is_loaded = False
@@ -155,24 +166,32 @@ class Mortar(Area, Interactive, Container, Structure, Node):
         self._forced_miss_radius = self._MIN_FORCED_MISS_RADIUS
     
     def is_available_for(self, interactor: Node) -> bool:
-        return super().is_available_for(interactor) and interactor.name == "Player"
+        return super().is_available_for(interactor) and interactor.name in self._WHITELISTED
     
     def _on_interaction(self, interactor: Node, key: str = None) -> None:
         if key == "interact":
             if interactor.has_shell and not self._is_loaded:
                 interactor.has_shell = False
+                # update shell indicator
+                interactor.shell_indicator.text = interactor.ICON_HAS_NOT_SHELL
                 self._is_loaded = True
-        elif key == "config":
+                self._animation.play("LoadShell")
+        elif key == "progress": # TODO: change to action bar that needs to be pressed
             if interactor.target == None:
                 return
             self.set_target(interactor.target)
-            # interactor.target = None # DEV may want to change this
+            x, y = self._target
+            lx = len(str(x))
+            self.target_decay_label.text = f"{int(x)} ¤ {int(y)}"
+            self.target_decay_label.x = self.x +3 - lx # +3 because of delimiter (" ¤ ")
+            self.target_decay_label.show()
             return
         elif key == "activate":
             if self._is_loaded and self._target != None:
                 self._is_loaded = False
                 self._spawn_projectiles()
                 self._forced_miss_radius += self._FORCED_MISS_RADIUS_INCREASE
+                self._animation.play("Idle")
                 # self._sound.play()
     
     def _spawn_projectiles(self) -> None: # spawn projectile(s)

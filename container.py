@@ -46,15 +46,31 @@ class Hotbar(InputHandler, Container, DecayLabel): # TODO: move to other file. C
     def _input(self, event: InputEvent) -> None:
         if event.pressed:
             if event.action == "slot_1":
-                self._index = 0
+                index = 0
             elif event.action == "slot_2":
-                self._index = 1
+                index = 1
             elif event.action == "slot_3":
-                self._index = 2
-            # TODO: add more slots
+                index = 2
+            elif event.action == "slot_4":
+                index = 3
+            elif event.action == "slot_5":
+                index = 4
+            elif event.action == "slot_6":
+                index = 5
+            elif event.action == "slot_7":
+                index = 6
+            elif event.action == "slot_8":
+                index = 7
+            elif event.action == "slot_9":
+                index = 8
             else:
                 return # returns if not slot key pressed
-            self._index = min(self._index, len(self.inventory) -1) # clamp index
+            if index > (len(self.inventory) -1):
+                return
+            # state controll
+            self.inventory[self._index].active = False # old
+            self._index = index
+            self.inventory[self._index].active = True # new
             # construct visual part
             self.content = []
             self.content.append(list(self.SPACE * len(self.passive) + self.TOP))
@@ -69,5 +85,4 @@ class Hotbar(InputHandler, Container, DecayLabel): # TODO: move to other file. C
                     self.content.append(list(self.SPACE * len(self.passive) + self.SEPARATOR))
             self.content.append(list(self.SPACE * len(self.passive) + self.BOTTOM))
             self.show()
-
 

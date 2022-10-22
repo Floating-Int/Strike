@@ -29,7 +29,8 @@ class Flak(Mortar): # Mortar: Interactive, Node
         super().__init__(owner, x, y, z)
         self._animation = AnimationPlayer(
             self,
-            Idle=Animation("./animations/flak/idle")
+            Idle=Animation("./animations/flak/idle"),
+            LoadShell=Animation("./animations/flak/loaded")
         )
         self._animation.play("Idle")
     

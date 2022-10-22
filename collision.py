@@ -31,7 +31,7 @@ class ReactiveShape(Shape):
         return False
 
 
-class Collider:
+class Collider: # Component
     _colliders = [] # may be an Area
 
     def __new__(cls, *args, **kwargs):
@@ -64,7 +64,7 @@ class Collider:
         super().free()
 
 
-class Area:
+class Area: # Component
     _colliders = [] # may be an Area
 
     def __new__(cls, *args, **kwargs):

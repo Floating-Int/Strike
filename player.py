@@ -1,13 +1,15 @@
+import math
 from node import Node
 from interaction import Interactor
 from collision import Collider
 from event import InputHandler, InputEvent
 from container import Hotbar
 from camera import Camera
-from ui import HealthBar, Compass, NodeCounter
+from ui import HealthBar, Compass, Label, NodeCounter
 
 
 class Marker(InputHandler, Node):
+    reach = 15
     _SPEED = 16
 
     def __init__(self, owner=None, x: int = 0, y: int = 0, z: int = 0) -> None:
@@ -21,7 +23,7 @@ class Marker(InputHandler, Node):
 
     def _update(self, delta: float) -> None:
         if self.is_moving:
-            current = (self.x, self.y)
+            current = [self.x, self.y]
             if self.is_action_pressed("move_right"):
                 self.x += self._SPEED * delta
             if self.is_action_pressed("move_left"):
@@ -30,8 +32,14 @@ class Marker(InputHandler, Node):
                 self.y -= self._SPEED * delta
             if self.is_action_pressed("move_down"):
                 self.y += self._SPEED * delta
-            if (self.x, self.y) != current: # moved
-                self.root.send(f"MARKER_POS:{self.root.cid}:{self.x}:{self.y}")
+            if [self.x, self.y] != current: # moved
+                x = (self.x - self.owner.x) // 2
+                y = (self.y - self.owner.y)
+                length = math.sqrt(x*x + y*y)
+                if length <= self.reach:
+                    self.root.send(f"MARKER_POS:{self.root.cid}:{self.x}:{self.y}")
+                else:
+                    self.position = current
 
 
 class HollowMarker(Node):
@@ -41,6 +49,8 @@ class HollowMarker(Node):
 
 
 class Player(Interactor, Collider, InputHandler, Node):
+    ICON_HAS_SHELL = "[=]"
+    ICON_HAS_NOT_SHELL = "[ ]"
     _SPEED = 16 # TODO: fix issue when speed is decimal using floor and ceil
 
     def __init__(self, owner: Node = None, x: int = 0, y: int = 0, z: int = 0) -> None:
@@ -52,7 +62,7 @@ class Player(Interactor, Collider, InputHandler, Node):
         self.add_action("activate", key="space")
         self.add_action("interact", key="f")
         self.add_action("move_marker", key="e")
-        self.add_action("config", key="c")
+        self.add_action("progress", key="c")
         self.add_action("slot_1", key="1")
         self.add_action("slot_2", key="2")
         self.add_action("slot_3", key="3")
@@ -63,6 +73,7 @@ class Player(Interactor, Collider, InputHandler, Node):
         self.hotbar = Hotbar(self, x=self.root.width -4, y=self.root.height - 10, decay=3.0)
         self.marker = Marker(self, z=2)
         self.marker.visible = False # TEST
+        self.shell_indicator = Label(self, x=12, y=self.root.height -1, text=self.ICON_HAS_NOT_SHELL)
         self._is_moving = True
         self._max_health = 3
         self._health = self._max_health
@@ -89,6 +100,11 @@ class Player(Interactor, Collider, InputHandler, Node):
         self.health = self._max_health
         self.root.send(f"PLAYER_POS:{self.root.cid}:{self.x}:{self.y}")
 
+    def _input(self, event: InputEvent) -> None:
+        if event.pressed:
+            if event.action == "progress":
+                self.interact("progress")
+
     def _update(self, delta: float) -> None:
         if self.root.settings.visible:
             return
@@ -112,8 +128,8 @@ class Player(Interactor, Collider, InputHandler, Node):
         elif self.is_action_pressed("activate"): # activation key
             self.interact("activate")
         
-        elif self.is_action_pressed("config"):
-            self.interact("config")
+        # elif self.is_action_pressed("progress"):
+        #     self.interact("progress")
         
         current = self.position
         if self.is_action_pressed("move_right"):
