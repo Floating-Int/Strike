@@ -11,15 +11,15 @@ class BaseServer:
     _ARGUMENT_DELIMITER = ":"
     _NEGATIVE_INF = float("-inf")
 
-    def __init__(self, size: int, host: Union[str, int], port: Union[str, int]) -> None:
+    def __init__(self, host: Union[str, int], port: Union[str, int], backlog: int = 5) -> None:
         self.connections = []
-        self._size = size
+        self._backlog = backlog
         self._address = (host, port)
         self._sel = selectors.DefaultSelector()
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._sel.register(self._sock, selectors.EVENT_READ)
         self._sock.bind(self._address)
-        self._sock.listen(size * 2)
+        self._sock.listen(self._backlog)
         self._sock.setblocking(False)
         self._buffer = bytes()
         self.__main_loop()
@@ -34,7 +34,7 @@ class BaseServer:
             encoded = response.encode(encoding="utf-8") + self._DELIMITER
             try:
                 conn.send(encoded)
-            except (ConnectionAbortedError, ConnectionResetError) as exception:
+            except (ConnectionAbortedError, ConnectionResetError, BrokenPipeError) as exception:
                 self._on_connection_disconnected(conn)
                 self._sel.unregister(conn)
                 self.connections.remove(conn)
@@ -93,9 +93,9 @@ class Server(BaseServer):
     RESPONSE_PLAYER_POS = "PLAYER_POS:{cid}:{x}:{y}"
     RESPONSE_MARKER_POS = "MARKER_POS:{cid}:{x}:{y}"
 
-    def __init__(self, size: int, host: Union[str, int], port: Union[str, int]) -> None:
+    def __init__(self, host: Union[str, int], port: Union[str, int], backlog: int = 5) -> None:
         self.next_cid = 0
-        BaseServer.__init__(self, size, host, port)
+        BaseServer.__init__(self, host, port, backlog)
     
     def _on_connection_connected(self, connection: socket.socket) -> None:
         response = self.RESPONSE_CONNECTION_CONNECTED.format(cid=self.next_cid).encode("utf-8") + self._DELIMITER
@@ -166,4 +166,4 @@ class Server(BaseServer):
 
 
 if __name__ == "__main__":
-    server = Server(5, "localhost", 7070)
+    server = Server("localhost", 7070)

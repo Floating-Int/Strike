@@ -1,7 +1,8 @@
-from cgitb import text
 import math
+from functools import wraps
+from types import FunctionType
 from node import Node, Control
-import keyboard
+from event import InputHandler, InputEvent
 
 
 class Label(Control, Node):
@@ -38,79 +39,161 @@ class DecayLabel(Label):
         self._elapsed_time += delta
 
 
-class Settings(Control, Node):
+# class Option:
+#     __slots__ = ("text", "callback")
+
+#     def __init__(self, text: str, callback: Callable) -> None:
+#         self.text = text
+#         self.callback = callback
+
+
+class Settings(InputHandler, Control, Node):
     TOP_LEVEL = 101
     _METHOD_PREFIX = "_on_"
-    options = ["Help", "Keybinds", "Volume", "Exit"]
-    key_toggle = "esc"
-    key_accept = "enter"
-    key_cycle = "tab"
-    key_reverse = "shift"
-    active = "> "
-    passive = "  "
+    _FILLER = " "
     
-    def __init__(self, owner=None, x: int = 0, y: int = 0, z: int = TOP_LEVEL, header: str = "- SETTINGS -") -> None:
+    def __init__(self, owner=None, x: int = 0, y: int = 0, z: int = TOP_LEVEL, header: str = "- SETTINGS -", active: str = "> ", passive: str = "  ") -> None:
         super().__init__(owner, x, y, z)
-        self.visible = False
-        self._index = 0
         self.header = header
-        self.content = [list(self.header)] + self._get_options()
-        self._is_toggle_pressed = False
-        self._is_accept_pressed = False
-        self._is_cycle_pressed = False
+        self.active = active # TODO: change to private
+        self.passive = passive
+        self.add_action("toggle", "esc")
+        self.add_action("accept", "enter")
+        self.add_action("cycle", "tab")
+        self.add_action("reverse", "shift") # used in combination with 'cycle' action
+        self.visible = False
+        self.content = [list(self.header)]
+        self._options = {} # name: function
+        self._index = 0
+        # self._longest_len = len(max(list(self._options.keys()) + [self.header], key=len)) if self._options else 0
+        self._longest_len = len(self.header)
+
+    # decorator    
+    def option(self, option: FunctionType) -> Warning:
+        """Decorator for adding options
+
+        Args:
+            option (FunctionType): function representing an option
+
+        Returns:
+            Callable: do not call this
+        """
+        # if option.__code__.co_varnames == tuple():
+        #     raise TypeError(f"{option.__name__} requres an argument, which will be used to display the option")
+        name = option.__name__.partition(self._METHOD_PREFIX)[2].capitalize()
+        self._options[name] = option
+        # self._longest_len = len(max(list(self._options.keys()) + [self.header], key=len)) if self._options else 0
+        self._longest_len = len(self.header)
+        self._refresh_content()
+
+        @wraps(option)
+        def uncallable() -> Exception:
+            raise NotImplementedError("only use <Settings>.option as a decorator for registering an option")
+        return uncallable
+
+    def _refresh_content(self):
+        # line = f"{self.[state]}{option.__code__.co_varnames[-1]}"
+        self.content = [list(self.header)]
+        for idx, name in enumerate(self._options.keys()):
+            if idx == self._index:
+                # line = self.active + name.ljust(self._longest_len, self._FILLER)
+                line = (self.active + name).ljust(self._longest_len, self._FILLER)
+            else:
+                # line = self.passive + name.ljust(self._longest_len, self._FILLER)
+                line = (self.passive + name).ljust(self._longest_len, self._FILLER)
+            self.content.append(list(line))
+
+    def _input(self, event: InputEvent) -> None:
+        if event.pressed:
+            if event.action == "toggle":
+                self.visible = not self.visible
+                if not self.visible:
+                    self._index = 0
+                    self._refresh_content()
+
+            elif not self.visible:
+                return
+
+            elif event.action == "cycle":
+                if self.is_action_pressed("reverse"):
+                    self._index = max(self._index -1, 0)
+                else:
+                    self._index = min(self._index +1, len(self._options) -1)
+                self.content = [list(self.header)]
+                self._refresh_content()
+            
+            elif event.action == "accept":
+                method = list(self._options.values())[self._index]
+                method()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # def add_option(self, option: Option) -> None:
+    #     self.options.append(option)
+
+    # def _get_options(self) -> list:
+    #     options = []
+    #     for idx, option in enumerate(self.options):
+    #         visual = (self.active if idx == self._index else self.passive) + option
+    #         options.append(list(visual.ljust(len(self.header))))
+    # #     return options
+
+    # def _update(self, _delta: float) -> None:
+    #     if self._is_toggle_pressed:
+    #         if not keyboard.is_pressed(self.key_toggle):
+    #             self._is_toggle_pressed = False
+    #     elif keyboard.is_pressed(self.key_toggle): # toggle
+    #         self.visible = not self.visible
+    #         if self.visible:
+    #             self._index = 0 # reset index
+    #             self.content = [list(self.header)] + self._get_options()
+    #         self._is_toggle_pressed = True
+    #         return
+    #     if not self.visible:
+    #         return
+
+    #     if self._is_accept_pressed:
+    #         if not keyboard.is_pressed(self.key_accept):
+    #             self._is_accept_pressed = False
+    #     elif keyboard.is_pressed(self.key_accept):
+    #         self._is_accept_pressed = True
+    #         method_name = self._METHOD_PREFIX + self.options[self._index].lower()
+    #         method = getattr(self, method_name)
+    #         method() # call bound method
+    #         return
+
+    #     if keyboard.is_pressed(f"{self.key_reverse}+{self.key_cycle}"):
+    #         if not self._is_cycle_pressed:
+    #             self._is_cycle_pressed = True
+    #             self._index = max(self._index -1, 0)
+    #             self.content = [list(self.header)] + self._get_options()
+    #     elif keyboard.is_pressed(self.key_cycle):
+    #         if not self._is_cycle_pressed:
+    #             self._is_cycle_pressed = True
+    #             self._index = min(self._index +1, len(self.options) -1)
+    #             self.content = [list(self.header)] + self._get_options()
+    #     else:
+    #         self._is_cycle_pressed = False
     
-    def _get_options(self) -> list:
-        options = []
-        for idx, option in enumerate(self.options):
-            visual = (self.active if idx == self._index else self.passive) + option
-            options.append(list(visual.ljust(len(self.header))))
-        return options
-
-    def _update(self, _delta: float) -> None:
-        if self._is_toggle_pressed:
-            if not keyboard.is_pressed(self.key_toggle):
-                self._is_toggle_pressed = False
-        elif keyboard.is_pressed(self.key_toggle): # toggle
-            self.visible = not self.visible
-            if self.visible:
-                self._index = 0 # reset index
-                self.content = [list(self.header)] + self._get_options()
-            self._is_toggle_pressed = True
-            return
-        if not self.visible:
-            return
-
-        if self._is_accept_pressed:
-            if not keyboard.is_pressed(self.key_accept):
-                self._is_accept_pressed = False
-        elif keyboard.is_pressed(self.key_accept):
-            self._is_accept_pressed = True
-            method_name = self._METHOD_PREFIX + self.options[self._index].lower()
-            method = getattr(self, method_name)
-            method() # call bound method
-            return
-
-        if keyboard.is_pressed(f"{self.key_reverse}+{self.key_cycle}"):
-            if not self._is_cycle_pressed:
-                self._is_cycle_pressed = True
-                self._index = max(self._index -1, 0)
-                self.content = [list(self.header)] + self._get_options()
-        elif keyboard.is_pressed(self.key_cycle):
-            if not self._is_cycle_pressed:
-                self._is_cycle_pressed = True
-                self._index = min(self._index +1, len(self.options) -1)
-                self.content = [list(self.header)] + self._get_options()
-        else:
-            self._is_cycle_pressed = False
-    
-    def _on_help(self) -> None:
-        ...
-    def _on_keybinds(self) -> None:
-        ...
-    def _on_volume(self) -> None:
-        ...
-    def _on_exit(self) -> None:
-        ...
+    # def _on_help(self) -> None:
+    #     ...
+    # def _on_keybinds(self) -> None:
+    #     ...
+    # def _on_volume(self) -> None:
+    #     ...
+    # def _on_exit(self) -> None:
+    #     ...
 
 
 class Compass(Control, Node):
@@ -120,7 +203,7 @@ class Compass(Control, Node):
     # _SYMBOLS = ["⇓", "⇘", "⇒", "⇗", "⇑", "⇖", "⇐", "⇙"] # points from origin
     _SYMBOLS = ["⇑", "⇖", "⇐", "⇙", "⇓", "⇘", "⇒", "⇗"] # points at origin
 
-    def _update(self, delta: float) -> None:
+    def _update(self, _delta: float) -> None:
         radians = math.atan2(*self.owner.position)
         normalized = (radians / math.pi) # can 'radians' be 0?
         if normalized == 0:
@@ -150,9 +233,7 @@ class HealthBar(Control, Node):
         self.capacity = capacity
         self.current = capacity if current == self.MAXIMUM else current
     
-    def _update(self, delta: float) -> None:
-        # self.x = self.owner.x - sum(divmod(self.capacity, 2))
-        # self.y = self.owner.y - sum(divmod(self.root.height, 2))
+    def _update(self, _delta: float) -> None:
         health = (self._HEALTH_ICON * self.current).ljust(self.capacity)
         self.content = [list(
             f"[{health.ljust(self.capacity)}]"

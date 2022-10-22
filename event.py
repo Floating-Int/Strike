@@ -11,6 +11,9 @@ class InputEvent:
         self.pressed = pressed
         self.action = action
     
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}(pressed={self.pressed}, action={self.action})"
+    
     def is_action_pressed(self, action: str) -> bool:
         return self.input_map._states[action] # NOTE: raises error if action is not registered
     
@@ -59,14 +62,11 @@ class InputMap(Singleton):
     @classmethod
     def _update(self):
         for key, actions in self._keybinds.items():
-            if keyboard.is_pressed(key):
-                for action in actions:
-                    self._states[action] = True
-            else:
-                for action in actions:
-                    self._states[action] = False
+            state = keyboard.is_pressed(key)
+            for action in actions:
+                self._states[action] = state
         
-        for event in self._event_buffer.values():
+        for event in list(self._event_buffer.values()):
             for input_handler in self._input_handlers:
                 input_handler._input(event)
         # reset event buffer so it can collect new inputs until next frame

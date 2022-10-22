@@ -52,19 +52,17 @@ class Player(Interactor, Collider, InputHandler, Node):
         self.add_action("activate", key="space")
         self.add_action("interact", key="f")
         self.add_action("move_marker", key="e")
-        self.add_action("build", key="q")
-        self.add_action("rotate", key="r")
+        self.add_action("config", key="c")
         self.add_action("slot_1", key="1")
         self.add_action("slot_2", key="2")
         self.add_action("slot_3", key="3")
-        self.add_action("cycle_next", key="tab")
         self.content = [["@"]]
         self.target = None # 2D point
         self.direction = [0, 0]
-        self.hotbar = Hotbar(self, x=0, y=2)
+        self.has_shell = False
+        self.hotbar = Hotbar(self, x=self.root.width -4, y=self.root.height - 10, decay=3.0)
         self.marker = Marker(self, z=2)
         self.marker.visible = False # TEST
-        # self._key_r_pressed = False
         self._is_moving = True
         self._max_health = 3
         self._health = self._max_health
@@ -91,10 +89,6 @@ class Player(Interactor, Collider, InputHandler, Node):
         self.health = self._max_health
         self.root.send(f"PLAYER_POS:{self.root.cid}:{self.x}:{self.y}")
 
-    def _input(self, event: InputEvent) -> None:
-        if event.action == "rotate" and event.pressed:
-            self.interact("r")
-
     def _update(self, delta: float) -> None:
         if self.root.settings.visible:
             return
@@ -103,23 +97,11 @@ class Player(Interactor, Collider, InputHandler, Node):
                 self._is_moving = True
                 self.marker.is_moving = False
                 self.target = self.marker.position
-                self.interact("e_released")
+                self.interact("stop_marker")
             return
         
-        if self.is_action_pressed("slot_1"):
-            self.interact("1")
-        
-        elif self.is_action_pressed("slot_2"):
-            self.interact("2")
-        
-        elif self.is_action_pressed("slot_3"):
-            self.interact("3")
-        
-        if self.is_action_pressed("cycle_next"):
-            self.interact("tab")
-
         if self.is_action_pressed("interact"): # interaction key
-            self.interact("f", single=False)
+            self.interact("interact", single=False)
 
         elif self.is_action_pressed("move_marker"):
             self._is_moving = False
@@ -127,11 +109,11 @@ class Player(Interactor, Collider, InputHandler, Node):
             self.marker.visible = True
             self.marker.position = self.position
 
-        elif self.is_action_pressed("build"):
-            self.interact("q")
-        
         elif self.is_action_pressed("activate"): # activation key
-            self.interact("space")
+            self.interact("activate")
+        
+        elif self.is_action_pressed("config"):
+            self.interact("config")
         
         current = self.position
         if self.is_action_pressed("move_right"):

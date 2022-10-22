@@ -96,13 +96,6 @@ class Shell(Node):
         instance = cls(x=x, y=y)
         instance._target = (tx, ty) # important because of snap to target
         return instance
-    
-    def _explode(self) -> None:
-        self._elapsed_time = 0
-        # make unreferenced Node
-        self._CRATER_TYPE(None, *self._target)
-        self.visible = False
-        self.free()
 
     def _update(self, delta: float) -> None:
         self._elapsed_time += delta
@@ -124,6 +117,12 @@ class Shell(Node):
             if self._target[1] - self.y < 0.5: # snap
                 self.position = self._target
                 self._explode()
+    
+    def _explode(self) -> None:
+        self._elapsed_time = 0
+        # make unreferenced Node
+        self._CRATER_TYPE(None, *self._target)
+        self.free()
 
 
 class Mortar(Area, Interactive, Container, Structure, Node):
@@ -148,29 +147,33 @@ class Mortar(Area, Interactive, Container, Structure, Node):
         self.shape.disabled = False
         self._target = None
         self._forced_miss_radius = self._MIN_FORCED_MISS_RADIUS # lower number is more accurate
-        self._loaded = False
-        self._shell = None
+        self._is_loaded = False
         # self._sound = mixer.Sound("./sounds/mortar_activate.wav")
     
     def set_target(self, target: list) -> None:
         self._target = target
         self._forced_miss_radius = self._MIN_FORCED_MISS_RADIUS
     
+    def is_available_for(self, interactor: Node) -> bool:
+        return super().is_available_for(interactor) and interactor.name == "Player"
+    
     def _on_interaction(self, interactor: Node, key: str = None) -> None:
-        if key == "f":
-            if interactor.target == None: # DEV may want to change this
+        if key == "interact":
+            if interactor.has_shell and not self._is_loaded:
+                interactor.has_shell = False
+                self._is_loaded = True
+        elif key == "config":
+            if interactor.target == None:
                 return
             self.set_target(interactor.target)
             # interactor.target = None # DEV may want to change this
             return
-        elif key != "space":
-            return # key for activation is "space"
-        if self._target == None:
-            return
-        # instantiate projectile shell
-        self._spawn_projectiles()
-        self._forced_miss_radius += self._FORCED_MISS_RADIUS_INCREASE
-        # self._sound.play()
+        elif key == "activate":
+            if self._is_loaded and self._target != None:
+                self._is_loaded = False
+                self._spawn_projectiles()
+                self._forced_miss_radius += self._FORCED_MISS_RADIUS_INCREASE
+                # self._sound.play()
     
     def _spawn_projectiles(self) -> None: # spawn projectile(s)
         type_name = self._SHELL_TYPE.__name__
@@ -184,11 +187,11 @@ class Mortar(Area, Interactive, Container, Structure, Node):
             local_tx = tx + random.randint(-self._SALVO_SPREAD, self._SALVO_SPREAD)
             local_ty = ty + random.randint(-self._SALVO_SPREAD, self._SALVO_SPREAD)
             # create unreferenced nodes
-            self._SHELL_TYPE(None, x=x, y=y, z=1, target=[local_tx, local_ty])
+            shell = self._SHELL_TYPE(None, x=x, y=y, z=1, target=[local_tx, local_ty])
             # send request per projectile
             self.root.send(self._REQUEST_SHELL_LAUNCHED.format(type=type_name, x=x, y=y, tx=tx, ty=ty))
     
-    def _on_collision(self, collider: Collider):
+    def _on_collision(self, collider: Collider): # FIXME: make Area class
         self.hp -= 1
         if self.hp <= 0:
             print("HIT")

@@ -7,7 +7,7 @@ from items import *
 from dev import *
 
 
-TPS = 16 / 1
+TPS = 16
 WIDTH = 24 * 1.5 * 2
 WIDTH = 73
 HEIGHT = 6 * 2
@@ -29,14 +29,13 @@ class App(Client, Engine):
 
     def _on_start(self) -> None:
         Node.root = self # important
-        self.camera = Camera.get_current() # main camera
-        self.settings = Settings(x=2, y=2)
-        self.settings._on_exit = self.disconnect
+        self.camera = Camera.get_current() # main camera # TODO: add follow ref to camera
+        self.settings = Settings(x=2, y=2) # TODO: make owner follow ref of camera
         self.player = Player(self, x=3, y=3, z=1)
         self.player.hotbar.add_item(Wrench(self.player))
         # self.player.hotbar.add_item(RemoteTrigger(self.player))
         # self.player.hotbar.add_item(Firearm(self.player))
-        self.settings.owner = self.player
+        # self.settings.owner = self.player
         self.resource_system = ResourceSystem(self.player, x=0, y=self.height-1)
         # self.player.wrench = Wrench(self.player)
         # self.player.remote_trigger = RemoteTrigger(self.player)
@@ -45,6 +44,19 @@ class App(Client, Engine):
         self.moartar_b = Mortar(self, x=10, y=6)
         self.flak_a = Flak(self, x=-10, y=2)
         self.depot = Depot(self, x=4, y=2)
+        # settings options
+        @self.settings.option
+        def _on_help() -> None:
+            print(":Help:")
+        @self.settings.option
+        def _on_keybinds() -> None:
+            print(":Keybinds:")
+        @self.settings.option
+        def _on_credits() -> None:
+            print(":Credits:")
+        @self.settings.option
+        def _on_exit() -> None:
+            self.disconnect()
         # request join
         self.send(self.REQUEST_PLAYER_JOINED.format(x=self.player.x, y=self.player.y))
     

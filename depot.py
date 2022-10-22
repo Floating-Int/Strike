@@ -1,20 +1,27 @@
 from node import Node
 from interaction import Interactive
 from container import Container
-from nodes import Shell, FlakShell
 
 
 class Depot(Interactive, Container, Node):
 
-    def __init__(self, owner=None, x: int = 0, y: int = 0, z: int = 0) -> None:
+    def __init__(self, owner: Node = None, x: int = 0, y: int = 0, z: int = 0) -> None:
         super().__init__(owner, x, y, z)
         self.content = [list("{=}")]
-        self.inventory = {"GenericShell": float("inf")}
+        self._effect_duration = 1.5 # seconds
+        self._elapsed_time = self._effect_duration
+    
+    def _update(self, delta: float) -> None:
+        if self._elapsed_time >= self._effect_duration:
+            self.content = [list("{=}")]
+            return
+        self.content = [list("{ }")]
+        self._elapsed_time += delta
 
     def _on_interaction(self, interactor: Node, key: str = None) -> None:
-        if not isinstance(interactor, Container): # TODO: add system for type checking, so it can accept string
-            return
-        if key == "f":
-            if not self.current in interactor.inventory:
-                interactor.inventory["GenericShell"] = 0
-            interactor.inventory["GenericShell"] += 1
+        if key == "interact":
+            if interactor.name == "Player":
+                interactor.has_shell = True
+                # visual effect
+                self.content = [list("{ }")]
+                self._elapsed_time = 0

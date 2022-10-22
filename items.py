@@ -1,10 +1,11 @@
 from nodes import *
 from interaction import Interactive, Interactor
+from event import InputHandler, InputEvent
 from item import Item
 import math
 
 
-class Wrench(Item):
+class Wrench(InputHandler, Item):
     TEXTURE = "‡"
     _REQUEST_CREATE = "CREATE:{structure}:{x}:{y}"
     _ROTATIONS = [
@@ -15,30 +16,43 @@ class Wrench(Item):
     ]
     _ROTATION_SYMBOLS = ["⇒", "⇓", "⇐", "⇑"] # points from origin
     structures = ["Wall", "Mortar", "Flak"] # TODO: add setter for this (update longest length in item label)
-    key_next = "tab"
-    key_rotate = "r"
-    key_build = "q"
 
     def __init__(self, owner: Node, offset: list = [0, 0]) -> None:
         super().__init__(owner, offset)
-        self.precedence = 5
+        self.add_action("cycle_next", "tab")
+        self.add_action("rotate", "r")
+        self.add_action("reverse", "shift")
+        self.add_action("build", "q")
         self._index = 0
         self._longest_len = len(max(self.structures, key=len))
         self._item_label = ItemLabel(self, y=sum(divmod(self.root.height, 3)), decay=2.0, width=self._longest_len)
-        self._rotation_index = 0 # ranges from 0-3 | TODO: increase to 8?
+        self._rotation_index = 3 # ranges from 0-3 | TODO: increase to 8?
         self._rotation_index_ui = DecayLabel(self, y=self.root.height // 2, decay=1.0)
     
-    def _on_interaction(self, interactor: Node, key: str = None) -> None:
-        if key == self.key_next:
+    def _input(self, event: InputEvent) -> None:
+        if self.root.settings.visible:
+            return
+        if not self.active:
+            return
+        if not event.pressed:
+            return
+        if event.action == "cycle_next":
             self._index = (self._index +1) % len(self.structures)
             self._item_label.text = self.structures[self._index]
             self._item_label.show()
-        elif key == self.key_rotate:
+        elif event.action == "rotate":
+            # if self.is_action_pressed("reverse"):
+            #     self._rotation_index = 1
+            # else:
+            #     self._rotation_index = (self._rotation_index + 1) % 4 # ranges from 0-3
             self._rotation_index = (self._rotation_index + 1) % 4 # ranges from 0-3
+            # print(self._rotation_index)
             symbol = self._ROTATION_SYMBOLS[self._rotation_index]
             self._rotation_index_ui.text = f"[Direction: ({symbol})]"
             self._rotation_index_ui.show()
-        elif key == self.key_build:
+    
+    def _update(self, _delta: float) -> None:
+        if self.is_action_pressed("build"):
             Struct = globals()[self.structures[self._index]]
             if self.root.resource_system.resources >= Struct.COST:
                 self.root.resource_system.resources -= Struct.COST
@@ -46,7 +60,7 @@ class Wrench(Item):
                 x = int(self.owner.x + a)
                 y = int(self.owner.y + b)
                 instance = Struct(x=x, y=y) # create unrefed node
-                # check if space is not taken
+                # TODO: check if space is not taken
                 # if instance.get_colliders():
                 #     self.root.resource_system.resources += Struct.COST
                 #     instance.free()
@@ -54,12 +68,12 @@ class Wrench(Item):
                 self.root.send(self._REQUEST_CREATE.format(structure=Struct.__name__, x=x, y=y))
 
 
-class RemoteTrigger(Interactor, Item, Node):
+class RemoteTrigger(Interactor, Interactive, Item, Node):
     TEXTURE = "±"
+    _WHITELISTED = ["Mortar", "Flak"]
 
     def __init__(self, owner: Node, offset: list = [0, 0]) -> None:
         super().__init__(owner, offset)
-        self.precedence = 5
         self._links = [] # node refs
         self._target = None
     
@@ -68,20 +82,23 @@ class RemoteTrigger(Interactor, Item, Node):
 
     def clear_links(self) -> None:
         self._links = []
+    
+    def is_available_for(self, interactor: Node) -> bool:
+        return self.active and interactor.name == "Player"
 
     def _on_interaction(self, interactor: Node, key: str = None) -> None:
-        if key == "f": # link with mortar
+        if key == "config": # link with mortar
             interactive = self.get_available_interactive()
             if interactive:
-                if interactive.name in ["Mortar", "Flak"]:
+                if interactive.name in self._WHITELISTED:
                     self.link_with(interactive)
                     # print("LINK:", interactive.name)
-        elif key == "e_released":
+        elif key == "stop_marker": # TODO: rename
             self._target = interactor.marker.position
             # print("TARGET:", interactor.marker.position)
-        elif key == "space":
+        elif key == "activate":
             for linked in self._links:
-                linked.set_target(self._target) # NOTE: have to be either Mortar or Flak | add tags?
+                linked.set_target(self._target)
                 self.interact_with(linked, key=key)
 
     def free(self) -> None:

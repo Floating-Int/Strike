@@ -33,13 +33,6 @@ class Flak(Mortar): # Mortar: Interactive, Node
         )
         self._animation.play("Idle")
     
-    def is_available_for(self, interactor: Node) -> None:
-        # return True # DEV
-        if interactor.x >= self.x and interactor.x < self.x + 5:
-            if interactor.y >= self.y and interactor.y < self.y + 3:
-                return True
-        return False
-    
 
 
 # \ ║ /

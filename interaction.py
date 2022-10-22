@@ -1,26 +1,27 @@
+from node import Node
 
 
 class Interactive:
+    precedence: int = 10
     _interactives = []
 
     @staticmethod
-    def __sort_fn(interactive) -> None:
+    def __sort_fn(interactive: Node) -> None:
         return (interactive.precedence, interactive._uid)
 
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls, *args, **kwargs)
         cls._interactives.append(instance)
-        instance.precedence = 10
         Interactive._interactives.sort(key=Interactive.__sort_fn)
         return instance
     
-    def is_available_for(self, interactor) -> bool:
-        if interactor.x >= self.x and interactor.x < self.x + len(self.content[0]):
+    def is_available_for(self, interactor: Node) -> bool:
+        if interactor.x >= self.x and interactor.x < self.x + len(self.content[0]): # NOTE: content is rectangle shaped
             if interactor.y >= self.y and interactor.y < self.y + len(self.content):
                 return True
         return False
     
-    def _on_interaction(self, interactor, key: str = None) -> None:
+    def _on_interaction(self, interactor: Node, key: str = None) -> None:
         return
     
     def free(self) -> None:
@@ -39,7 +40,7 @@ class Interactor:
                 if single:
                     break
     
-    def get_available_interactive(self) -> Interactive:
+    def get_available_interactive(self) -> Node:
         """Returns the first available <Interactive> based on <Interactive>.is_available_for(<Self@Interactor>)
 
         Returns:
@@ -50,5 +51,5 @@ class Interactor:
                 return interactive
         return None
 
-    def interact_with(self, interactive, key=None) -> None:
+    def interact_with(self, interactive: Node, key=None) -> None:
         interactive._on_interaction(self, key=key)
