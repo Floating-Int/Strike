@@ -8,8 +8,8 @@ from event import InputHandler, InputEvent
 class Label(Control, Node):
     def __init__(self, owner=None, x: int = 0, y: int = 0, z: int = Control.TOP_LEVEL, text: str = None) -> None:
         super().__init__(owner, x, y, z)
-        self._text = text if text is str else ""
-        self.content = list(map(list, text.split("\n"))) if text is str else []
+        self._text = text if type(text) is str else ""
+        self.content = list(map(list, text.split("\n"))) if type(text) is str else []
     
     @property
     def text(self) -> str:
@@ -125,75 +125,6 @@ class Settings(InputHandler, Control, Node):
             elif event.action == "accept":
                 method = list(self._options.values())[self._index]
                 method()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # def add_option(self, option: Option) -> None:
-    #     self.options.append(option)
-
-    # def _get_options(self) -> list:
-    #     options = []
-    #     for idx, option in enumerate(self.options):
-    #         visual = (self.active if idx == self._index else self.passive) + option
-    #         options.append(list(visual.ljust(len(self.header))))
-    # #     return options
-
-    # def _update(self, _delta: float) -> None:
-    #     if self._is_toggle_pressed:
-    #         if not keyboard.is_pressed(self.key_toggle):
-    #             self._is_toggle_pressed = False
-    #     elif keyboard.is_pressed(self.key_toggle): # toggle
-    #         self.visible = not self.visible
-    #         if self.visible:
-    #             self._index = 0 # reset index
-    #             self.content = [list(self.header)] + self._get_options()
-    #         self._is_toggle_pressed = True
-    #         return
-    #     if not self.visible:
-    #         return
-
-    #     if self._is_accept_pressed:
-    #         if not keyboard.is_pressed(self.key_accept):
-    #             self._is_accept_pressed = False
-    #     elif keyboard.is_pressed(self.key_accept):
-    #         self._is_accept_pressed = True
-    #         method_name = self._METHOD_PREFIX + self.options[self._index].lower()
-    #         method = getattr(self, method_name)
-    #         method() # call bound method
-    #         return
-
-    #     if keyboard.is_pressed(f"{self.key_reverse}+{self.key_cycle}"):
-    #         if not self._is_cycle_pressed:
-    #             self._is_cycle_pressed = True
-    #             self._index = max(self._index -1, 0)
-    #             self.content = [list(self.header)] + self._get_options()
-    #     elif keyboard.is_pressed(self.key_cycle):
-    #         if not self._is_cycle_pressed:
-    #             self._is_cycle_pressed = True
-    #             self._index = min(self._index +1, len(self.options) -1)
-    #             self.content = [list(self.header)] + self._get_options()
-    #     else:
-    #         self._is_cycle_pressed = False
-    
-    # def _on_help(self) -> None:
-    #     ...
-    # def _on_keybinds(self) -> None:
-    #     ...
-    # def _on_volume(self) -> None:
-    #     ...
-    # def _on_exit(self) -> None:
-    #     ...
 
 
 class Compass(Control, Node):
